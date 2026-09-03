@@ -17,3 +17,6 @@ frontend/coverage/
 coverage-final.json
 clover.xml
 *.tsbuildinfo
+
+# Generated dependency-graph output
+graphify-out/cache/

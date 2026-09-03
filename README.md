@@ -8,7 +8,7 @@ Hands-on 5-hour workshop to build a web-based procurement MVP and practice Copil
 - GR module: out of implementation scope during workshop (further exploration)
 - Optional extension: bookmark feature (`PR`, `PO`, `GR`) as post-backlog exercise
 
-Canonical workshop document: [docs/plan.md](docs/plan.md)
+Canonical workshop document: [docs/specs/plan.md](docs/specs/plan.md)
 
 ## Tech Stack
 - Backend: Fastify + REST API (JavaScript)

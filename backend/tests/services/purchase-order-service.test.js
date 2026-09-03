@@ -3,6 +3,7 @@ import {
   createPurchaseOrder,
   listPurchaseOrders,
   getOpenPoLines,
+  getPurchaseOrderById,
   submitPurchaseOrder,
 } from '../../src/services/purchase-order-service.js';
 
@@ -531,5 +532,122 @@ describe('purchase-order-service list functions', () => {
     expect(result.openLines).toHaveLength(1);
     expect(result.openLines[0].id).toBe('po-line-1');
     expect(result.openLines[0].qtyOpenForGr).toBe(6);
+  });
+});
+
+describe('getPurchaseOrderById – detail for the PO detail page', () => {
+  test('returns null when PO not found', async () => {
+    const db = { query: jest.fn(() => ({ rows: [], rowCount: 0 })) };
+
+    const result = await getPurchaseOrderById(db, 'missing-id');
+
+    expect(result).toBeNull();
+    expect(db.query).toHaveBeenCalledTimes(1);
+  });
+
+  test('hydrates each line with its source PR allocations', async () => {
+    // Query order: header → lines → allocations for line 1 → allocations for line 2
+    const responses = [
+      {
+        rows: [
+          {
+            id: 'po-1',
+            po_number: 'PO-2026-0001',
+            status: 'DRAFT',
+            vendor_name: 'PT Sumber Teknik',
+            created_at: '2026-05-01T10:00:00.000Z',
+            updated_at: '2026-05-01T10:00:00.000Z',
+          },
+        ],
+        rowCount: 1,
+      },
+      {
+        rows: [
+          {
+            id: 'po-line-1',
+            line_no: 1,
+            item_code: 'BRG-6205',
+            item_name: 'Bearing 6205',
+            qty_ordered: 12,
+            qty_received: 0,
+            uom: 'PCS',
+            unit_price: 83000,
+            site_code: 'JKT-PLANT',
+            required_date: null,
+          },
+          {
+            id: 'po-line-2',
+            line_no: 2,
+            item_code: 'GLV-IND',
+            item_name: 'Safety Gloves',
+            qty_ordered: 20,
+            qty_received: 0,
+            uom: 'PAIR',
+            unit_price: 30000,
+            site_code: 'JKT-PLANT',
+            required_date: null,
+          },
+        ],
+        rowCount: 2,
+      },
+      {
+        rows: [{ pr_line_id: 'pr-line-1', pr_number: 'PR-2026-0001', allocated_qty: '12' }],
+        rowCount: 1,
+      },
+      {
+        rows: [{ pr_line_id: 'pr-line-2', pr_number: 'PR-2026-0001', allocated_qty: '20' }],
+        rowCount: 1,
+      },
+    ];
+
+    let call = 0;
+    const db = { query: jest.fn(() => responses[call++]) };
+
+    const result = await getPurchaseOrderById(db, 'po-1');
+
+    expect(result.poNumber).toBe('PO-2026-0001');
+    expect(result.vendorName).toBe('PT Sumber Teknik');
+    expect(result.lines).toHaveLength(2);
+
+    expect(result.lines[0].allocations).toEqual([
+      { prLineId: 'pr-line-1', prNumber: 'PR-2026-0001', allocatedQty: 12 },
+    ]);
+    expect(result.lines[1].allocations).toEqual([
+      { prLineId: 'pr-line-2', prNumber: 'PR-2026-0001', allocatedQty: 20 },
+    ]);
+  });
+
+  test('returns an empty allocations array for a line with no PR source', async () => {
+    const responses = [
+      {
+        rows: [{ id: 'po-1', po_number: 'PO-2026-0002', status: 'DRAFT', vendor_name: 'Vendor' }],
+        rowCount: 1,
+      },
+      {
+        rows: [
+          {
+            id: 'po-line-1',
+            line_no: 1,
+            item_code: 'ADHOC',
+            item_name: 'Ad-hoc item',
+            qty_ordered: 2,
+            qty_received: 0,
+            uom: 'PCS',
+            unit_price: 5000,
+            site_code: 'JKT',
+            required_date: null,
+          },
+        ],
+        rowCount: 1,
+      },
+      { rows: [], rowCount: 0 },
+    ];
+
+    let call = 0;
+    const db = { query: jest.fn(() => responses[call++]) };
+
+    const result = await getPurchaseOrderById(db, 'po-1');
+
+    expect(result.lines[0].allocations).toEqual([]);
   });
 });

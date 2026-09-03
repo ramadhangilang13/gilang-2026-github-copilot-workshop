@@ -11,7 +11,7 @@ The modules for a MVP (minimum viable product) procurement system include:
 
 In this workshop, we focus on using a prebuilt baseline and a add a backlog sprint.
 
-Reference plan: `docs/plan.md`.
+Reference plan: `docs/specs/plan.md`.
 
 ## Scope Constraints (Strict)
 - Baseline provided in repo: database schema + Home/Dashboard + PR module (list/create/detail + required PR APIs).
@@ -31,7 +31,7 @@ Reference plan: `docs/plan.md`.
 - Do not use Prisma.
 
 ## API Requirements
-- Maintain compatibility with endpoints listed in `docs/plan.md`.
+- Maintain compatibility with endpoints listed in `docs/specs/plan.md`.
 - For participant backlog, prioritize PO endpoints:
 	- `POST /api/purchase-orders`
 	- `POST /api/purchase-orders/:id/submit`
@@ -61,3 +61,34 @@ Reference plan: `docs/plan.md`.
 
 ## Workshop-First Principle
 When there is a trade-off between production robustness and workshop clarity, choose workshop clarity.
+
+RTK — Token-Optimized CLI
+
+rtk is a CLI proxy that filters and compresses command outputs, saving 60-90% tokens.
+
+Rule
+
+Always prefix shell commands with rtk:
+
+# Instead of:      Use:
+git status         rtk git status
+git log -10        rtk git log -10
+docker ps          rtk docker ps
+Other examples where you can use rtk:
+
+rtk tree
+rtk ls -la
+rtk read
+rtk grep
+rtk rg
+rtk npm run test
+rtk curl <url>
+
+## Codebase Context & Knowledge Graph Protocol
+
+You have access to a pre-computed AST knowledge graph of this repository at `graphify-out/graph.json`. To minimize context window clutter, prevent hallucinations, and accurately map cross-file dependencies, you MUST follow these routing rules:
+
+1. **Consult the Graph First:** Before writing plans, making sweeping structural modifications, or tracing function call blast-radii, read `graphify-out/graph.json`. Filter nodes to only those whose `id` paths start with `backend/` or `frontend/src/` — nodes from `playwright-report/`, `test-results/`, and `coverage/` are minified build artifacts and must be ignored.
+2. **Identify God Nodes:** Rank nodes by edge degree. The highest-degree nodes are the structural hubs (e.g., service files, route registries). Avoid duplicating responsibilities already owned by a god node.
+3. **Trace Structural Paths:** If the user asks about relationships between modules or layers (e.g., how the API layer reaches the DB), do not grep blindly. Traverse the `links` array in `graph.json` to find the actual dependency path.
+4. **Graph State:** The graph is derived strictly via AST extraction — no documentation or semantic layer. Treat all node hierarchies and import edges as 100% extracted truth (`EXTRACTED` confidence tier). Do not infer structure that isn't in the graph.

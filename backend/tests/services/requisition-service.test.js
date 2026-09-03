@@ -1,6 +1,7 @@
 import { describe, test, expect, jest } from '@jest/globals';
 import {
   listRequisitions,
+  getRequisitionById,
   getRequisitionOpenLines,
 } from '../../src/services/requisition-service.js';
 
@@ -109,5 +110,121 @@ describe('requisition-service list functions', () => {
     expect(result.openLines).toHaveLength(1);
     expect(result.openLines[0].id).toBe('l-1');
     expect(result.openLines[0].qtyOpenForPo).toBe(3);
+  });
+});
+
+describe('getRequisitionById – detail for the PR detail page', () => {
+  test('returns null when requisition not found', async () => {
+    const db = mockDb(() => ({ rows: [], rowCount: 0 }));
+
+    const result = await getRequisitionById(db, 'missing-id');
+
+    expect(result).toBeNull();
+    expect(db.query).toHaveBeenCalledTimes(1);
+  });
+
+  test('returns header plus all lines, including fully allocated ones', async () => {
+    let call = 0;
+    const db = mockDb(() => {
+      call += 1;
+      if (call === 1) {
+        return {
+          rows: [
+            {
+              id: 'pr-1',
+              pr_number: 'PR-2026-0001',
+              status: 'APPROVED',
+              requester_name: 'Sari',
+              department_name: 'Maintenance',
+              title: 'Monthly MRO',
+              notes: 'Spare parts',
+              needed_by_date: '2026-06-15',
+              created_at: '2026-05-01T10:00:00.000Z',
+              updated_at: '2026-05-01T10:00:00.000Z',
+            },
+          ],
+          rowCount: 1,
+        };
+      }
+      return {
+        rows: [
+          {
+            id: 'l-1',
+            line_no: 1,
+            item_code: 'BRG-6205',
+            item_name: 'Bearing 6205',
+            qty_requested: '20',
+            qty_allocated: '12',
+            qty_received: '0',
+            uom: 'PCS',
+            est_unit_price: '85000',
+            site_code: 'JKT-PLANT',
+            required_date: null,
+            budget_center: 'MNT-001',
+          },
+          {
+            id: 'l-2',
+            line_no: 2,
+            item_code: 'GLV-IND',
+            item_name: 'Safety Gloves',
+            qty_requested: '50',
+            qty_allocated: '50',
+            qty_received: '0',
+            uom: 'PAIR',
+            est_unit_price: '32000',
+            site_code: 'JKT-PLANT',
+            required_date: null,
+            budget_center: 'MNT-001',
+          },
+        ],
+        rowCount: 2,
+      };
+    });
+
+    const result = await getRequisitionById(db, 'pr-1');
+
+    expect(result.prNumber).toBe('PR-2026-0001');
+    expect(result.notes).toBe('Spare parts');
+
+    // Unlike open-lines, the detail view keeps the fully allocated line.
+    expect(result.lines).toHaveLength(2);
+    expect(result.lines[1].qtyOpenForPo).toBe(0);
+  });
+
+  test('converts numeric string columns into numbers', async () => {
+    let call = 0;
+    const db = mockDb(() => {
+      call += 1;
+      if (call === 1) {
+        return { rows: [{ id: 'pr-1', pr_number: 'PR-2026-0001', status: 'DRAFT' }], rowCount: 1 };
+      }
+      return {
+        rows: [
+          {
+            id: 'l-1',
+            line_no: 1,
+            item_code: 'A',
+            item_name: 'Item A',
+            qty_requested: '10.50',
+            qty_allocated: '0.50',
+            qty_received: '0',
+            uom: 'PCS',
+            est_unit_price: '1500.25',
+            site_code: 'JKT',
+            required_date: null,
+            budget_center: null,
+          },
+        ],
+        rowCount: 1,
+      };
+    });
+
+    const result = await getRequisitionById(db, 'pr-1');
+    const line = result.lines[0];
+
+    expect(line.qtyRequested).toBe(10.5);
+    expect(line.qtyAllocated).toBe(0.5);
+    expect(line.estUnitPrice).toBe(1500.25);
+    expect(line.qtyOpenForPo).toBe(10);
   });
 });
