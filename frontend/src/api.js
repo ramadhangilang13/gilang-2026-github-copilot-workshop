@@ -25,14 +25,21 @@ async function apiFetch(path, options = {}) {
 export const api = {
   getDashboard: async () => {
     const requisitions = await apiFetch('/api/requisitions');
-    const items = requisitions.items || [];
+    const purchaseOrders = await apiFetch('/api/purchase-orders');
+    const goodsReceipts = await apiFetch('/api/goods-receipts');
+
+    const prItems = requisitions.items || [];
+    const poItems = purchaseOrders.items || [];
+    const grItems = goodsReceipts.items || [];
 
     return {
-      totalPr: items.length,
-      draftPr: items.filter((item) => item.status === 'DRAFT').length,
-      submittedPr: items.filter((item) => item.status === 'SUBMITTED').length,
-      approvedPr: items.filter((item) => item.status === 'APPROVED').length,
-      recentPr: items.slice(0, 5),
+      totalPr: prItems.filter((item) => item.status === 'APPROVED').length,
+      draftPr: prItems.filter((item) => item.status === 'DRAFT').length,
+      submittedPr: prItems.filter((item) => item.status === 'SUBMITTED').length,
+      approvedPr: prItems.filter((item) => item.status === 'APPROVED').length,
+      recentPr: prItems.slice(0, 3),
+      recentPo: poItems.slice(0, 3),
+      recentGr: grItems.slice(0, 2),
     };
   },
   listRequisitions: () => apiFetch('/api/requisitions'),
@@ -64,4 +71,6 @@ export const api = {
       method: 'POST',
     }),
   getPurchaseOrderOpenLines: (id) => apiFetch(`/api/purchase-orders/${id}/open-lines`),
+
+  listGoodsReceipts: () => apiFetch('/api/goods-receipts'),
 };
