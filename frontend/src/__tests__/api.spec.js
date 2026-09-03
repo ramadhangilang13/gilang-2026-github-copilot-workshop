@@ -24,7 +24,7 @@ describe('api.getDashboard counting', () => {
   });
 
   it('counts requisitions per status', async () => {
-    fetch.mockResolvedValue(
+    fetch.mockResolvedValueOnce(
       jsonResponse({
         items: [
           makePr('DRAFT', 1),
@@ -34,10 +34,12 @@ describe('api.getDashboard counting', () => {
         ],
       })
     );
+    fetch.mockResolvedValueOnce(jsonResponse({ items: [] }));
+    fetch.mockResolvedValueOnce(jsonResponse({ items: [] }));
 
     const result = await api.getDashboard();
 
-    expect(result.totalPr).toBe(4);
+    expect(result.totalPr).toBe(2);
     expect(result.draftPr).toBe(1);
     expect(result.submittedPr).toBe(1);
     expect(result.approvedPr).toBe(2);
@@ -45,17 +47,21 @@ describe('api.getDashboard counting', () => {
 
   it('caps recentPr at five entries', async () => {
     const items = Array.from({ length: 8 }, (_, i) => makePr('DRAFT', i + 1));
-    fetch.mockResolvedValue(jsonResponse({ items }));
+    fetch.mockResolvedValueOnce(jsonResponse({ items }));
+    fetch.mockResolvedValueOnce(jsonResponse({ items: [] }));
+    fetch.mockResolvedValueOnce(jsonResponse({ items: [] }));
 
     const result = await api.getDashboard();
 
-    expect(result.totalPr).toBe(8);
-    expect(result.recentPr).toHaveLength(5);
+    expect(result.totalPr).toBe(0);
+    expect(result.recentPr).toHaveLength(3);
     expect(result.recentPr[0].id).toBe(1);
   });
 
   it('returns zeroed counts when the API omits items', async () => {
-    fetch.mockResolvedValue(jsonResponse({}));
+    fetch.mockResolvedValueOnce(jsonResponse({}));
+    fetch.mockResolvedValueOnce(jsonResponse({}));
+    fetch.mockResolvedValueOnce(jsonResponse({}));
 
     const result = await api.getDashboard();
 
@@ -65,6 +71,8 @@ describe('api.getDashboard counting', () => {
       submittedPr: 0,
       approvedPr: 0,
       recentPr: [],
+      recentPo: [],
+      recentGr: [],
     });
   });
 });

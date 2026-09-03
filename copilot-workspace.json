@@ -1,0 +1,16 @@
+{
+  "agents": [
+    {
+      "name": "readme-creator",
+      "description": "Agent specializing in creating and improving README files",
+      "file": ".github/agents/readme-creator.agent.md"
+    }
+  ],
+  "prompts": [
+    {
+      "name": "explain-code",
+      "description": "Generate a clear code explanation with examples for this procurement system",
+      "file": ".github/prompts/explain-code.prompt.md"
+    }
+  ]
+}

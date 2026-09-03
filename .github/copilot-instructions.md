@@ -1,3 +1,7 @@
+---
+description: "Extended Copilot guidance for Procurement Workshop development"
+---
+
 # Copilot Instructions for This Workshop
 
 ## Objective
@@ -58,6 +62,40 @@ Reference plan: `docs/specs/plan.md`.
 
 ## Optional Extension
 - Bookmark feature (PR|PO|GR) is an optional post-backlog exercise and should be driven via GitHub Issue creation workflow.
+
+## Custom Agents
+
+### readme-creator
+**File**: `.github/agents/readme-creator.agent.md`
+
+A documentation specialist focused on creating and improving README files for this project.
+
+**When to use:**
+- Creating or updating README.md files
+- Improving project documentation structure
+- Writing clear project descriptions and setup instructions
+
+**Scope**: Limited to README files and documentation only
+
+---
+
+## Custom Prompts
+
+### Explain Code
+**File**: `.github/prompts/explain-code.prompt.md`
+
+Generate clear code explanations with examples for this procurement system.
+
+**When to use:**
+- Understanding existing code in the procurement system
+- Explaining business logic and validations
+- Breaking down complex procurement workflows
+
+**Inputs**:
+- Code snippet to explain
+- Target audience (beginners, intermediate, etc.)
+
+---
 
 ## Workshop-First Principle
 When there is a trade-off between production robustness and workshop clarity, choose workshop clarity.

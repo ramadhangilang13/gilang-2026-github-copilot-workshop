@@ -4,6 +4,9 @@ import PurchaseOrderLineAllocationTable from '../PurchaseOrderLineAllocationTabl
 
 function makeLine(overrides = {}) {
   return {
+    selected: true,
+    prNumber: 'PR-2026-0001',
+    prLineNo: 1,
     prLineId: 'pr-line-1',
     itemCode: 'BRG-6205',
     itemName: 'Bearing 6205',
@@ -22,13 +25,13 @@ function mountTable(lines) {
 }
 
 describe('PurchaseOrderLineAllocationTable rendering', () => {
-  it('renders one row per line with a sequential line number', () => {
-    const wrapper = mountTable([makeLine(), makeLine({ itemCode: 'GLV-IND' })]);
+  it('renders one row per line with PR number and PR line', () => {
+    const wrapper = mountTable([makeLine(), makeLine({ itemCode: 'GLV-IND', prLineNo: 2 })]);
 
     const rows = wrapper.findAll('[data-testid="po-line-row"]');
     expect(rows).toHaveLength(2);
-    expect(rows[0].findAll('td')[0].text()).toBe('1');
-    expect(rows[1].findAll('td')[0].text()).toBe('2');
+    expect(rows[0].findAll('td')[1].text()).toBe('PR-2026-0001');
+    expect(rows[1].findAll('td')[2].text()).toBe('2');
   });
 
   it('shows the open quantity as read-only text, not an input', () => {
@@ -70,12 +73,12 @@ describe('PurchaseOrderLineAllocationTable over-allocation feedback', () => {
 });
 
 describe('PurchaseOrderLineAllocationTable events', () => {
-  it('emits add-line when the new line button is clicked', async () => {
+  it('emits refresh-lines when the refresh button is clicked', async () => {
     const wrapper = mountTable([makeLine()]);
 
     await wrapper.find('.btn-outline').trigger('click');
 
-    expect(wrapper.emitted('add-line')).toHaveLength(1);
+    expect(wrapper.emitted('refresh-lines')).toHaveLength(1);
   });
 
   it('emits remove-line with the row index', async () => {
@@ -94,6 +97,16 @@ describe('PurchaseOrderLineAllocationTable events', () => {
 
     expect(wrapper.emitted('update-line')[0]).toEqual([
       { index: 0, field: 'qtyOrdered', value: 7 },
+    ]);
+  });
+
+  it('emits update-line when a row selection checkbox is toggled', async () => {
+    const wrapper = mountTable([makeLine()]);
+
+    await wrapper.find('[data-testid="po-line-select-checkbox"]').setValue(false);
+
+    expect(wrapper.emitted('update-line')[0]).toEqual([
+      { index: 0, field: 'selected', value: false },
     ]);
   });
 });

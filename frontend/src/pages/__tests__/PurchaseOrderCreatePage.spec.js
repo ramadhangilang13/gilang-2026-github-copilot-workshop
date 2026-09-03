@@ -43,7 +43,7 @@ async function mountWithSelectedPr() {
 }
 
 async function setVendor(wrapper, name) {
-  wrapper.findComponent(PurchaseOrderHeaderForm).vm.$emit('update:vendorName', name);
+  wrapper.findComponent(PurchaseOrderHeaderForm).vm.$emit('update:vendor', name);
   await flushPromises();
 }
 
@@ -143,6 +143,10 @@ describe('PurchaseOrderCreatePage submission', () => {
 
     expect(api.createPurchaseOrder).toHaveBeenCalledWith({
       vendorName: 'PT Sumber Teknik',
+      neededByDate: null,
+      currency: 'IDR',
+      paymentTerms: '',
+      notes: '',
       lines: [
         {
           prLineId: 'pr-line-1',

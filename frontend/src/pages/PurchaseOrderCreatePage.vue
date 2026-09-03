@@ -14,9 +14,12 @@
 
     <form @submit.prevent="handleSubmit">
       <PurchaseOrderHeaderForm
-        v-model:vendor-name="form.vendorName"
+        v-model:vendor="form.vendor"
+        v-model:needed-by-date="form.neededByDate"
+        v-model:currency="form.currency"
+        v-model:payment-terms="form.paymentTerms"
+        v-model:notes="form.notes"
         v-model:source-pr-id="form.sourcePrId"
-        v-model:order-date="form.orderDate"
         :approved-requisitions="approvedRequisitions"
       />
 
@@ -25,6 +28,7 @@
         @add-line="addLine"
         @remove-line="removeLine"
         @update-line="updateLine"
+        @refresh-lines="refreshLines"
       />
 
       <div class="btn-group">
@@ -56,6 +60,9 @@ const isSaving = ref(false);
 
 function emptyLine() {
   return {
+    selected: true,
+    prNumber: '',
+    prLineNo: null,
     prLineId: '',
     itemCode: '',
     itemName: '',
@@ -69,7 +76,11 @@ function emptyLine() {
 }
 
 const form = reactive({
-  vendorName: '',
+  vendor: '',
+  neededByDate: '',
+  currency: 'IDR',
+  paymentTerms: '',
+  notes: '',
   sourcePrId: '',
   orderDate: '',
   lines: [emptyLine()],
@@ -92,19 +103,30 @@ onMounted(async () => {
 watch(
   () => form.sourcePrId,
   async (prId) => {
+    console.log('🔍 watch sourcePrId triggered with value:', prId);
     errorMessage.value = '';
 
     if (!prId) {
+      console.log('📭 No PR selected, resetting to empty line');
       form.lines = [emptyLine()];
       return;
     }
 
     try {
+      console.log('📡 Calling API for PR:', prId);
       const payload = await api.getRequisitionOpenLines(prId);
+      console.log('✅ API Response:', payload);
+      
       const openLines = payload.openLines || [];
+      const requisitionNumber = payload.requisition?.prNumber || '';
+      
+      console.log('📊 Open lines count:', openLines.length);
 
       form.lines = openLines.length
         ? openLines.map((line) => ({
+            selected: true,
+            prNumber: requisitionNumber,
+            prLineNo: line.lineNo,
             prLineId: line.id,
             itemCode: line.itemCode,
             itemName: line.itemName,
@@ -117,10 +139,13 @@ watch(
           }))
         : [emptyLine()];
 
+      console.log('📋 Form lines updated:', form.lines);
+
       if (!openLines.length) {
         errorMessage.value = 'This requisition has no remaining quantity to allocate.';
       }
     } catch (error) {
+      console.error('❌ Error fetching lines:', error);
       errorMessage.value = error.message;
     }
   }
@@ -139,15 +164,68 @@ function updateLine({ index, field, value }) {
   form.lines[index][field] = value;
 }
 
+async function refreshLines() {
+  console.log('🔄 Refresh Lines called with PR:', form.sourcePrId);
+  if (!form.sourcePrId) {
+    errorMessage.value = 'Please select a PR first.';
+    return;
+  }
+
+  try {
+    console.log('📡 Calling API for refresh with PR:', form.sourcePrId);
+    const payload = await api.getRequisitionOpenLines(form.sourcePrId);
+    console.log('✅ Refresh API Response:', payload);
+    
+    const openLines = payload.openLines || [];
+    const requisitionNumber = payload.requisition?.prNumber || '';
+    
+    console.log('📊 Open lines count:', openLines.length);
+
+    form.lines = openLines.length
+      ? openLines.map((line) => ({
+          selected: true,
+          prNumber: requisitionNumber,
+          prLineNo: line.lineNo,
+          prLineId: line.id,
+          itemCode: line.itemCode,
+          itemName: line.itemName,
+          qtyOpenForPo: line.qtyOpenForPo,
+          qtyOrdered: line.qtyOpenForPo,
+          uom: line.uom,
+          unitPrice: line.estUnitPrice,
+          siteCode: line.siteCode,
+          requiredDate: toDateInput(line.requiredDate),
+        }))
+      : [emptyLine()];
+
+    console.log('📋 Form lines updated:', form.lines);
+
+    if (!openLines.length) {
+      errorMessage.value = 'This requisition has no remaining quantity to allocate.';
+    }
+  } catch (error) {
+    console.error('❌ Error refreshing lines:', error);
+    errorMessage.value = error.message;
+  }
+}
+
 // Mirrors the server rule so obvious breaches never leave the browser.
 function validate() {
-  if (!form.vendorName.trim()) {
+  if (!form.vendor.trim()) {
     return 'Vendor name is required.';
   }
 
-  for (let i = 0; i < form.lines.length; i++) {
-    const line = form.lines[i];
-    const label = `Line ${i + 1}`;
+  const selectedLines = form.lines
+    .map((line, index) => ({ line, index }))
+    .filter((entry) => entry.line.selected !== false);
+
+  if (!selectedLines.length) {
+    return 'Select at least one approved requisition line.';
+  }
+
+  for (const entry of selectedLines) {
+    const { line, index } = entry;
+    const label = `Line ${index + 1}`;
 
     if (!line.prLineId) {
       return `${label}: select an approved requisition line first.`;
@@ -173,11 +251,17 @@ async function handleSubmit() {
   errorMessage.value = validate();
   if (errorMessage.value) return;
 
+  const selectedLines = form.lines.filter((line) => line.selected !== false);
+
   isSaving.value = true;
   try {
     const created = await api.createPurchaseOrder({
-      vendorName: form.vendorName.trim(),
-      lines: form.lines.map((line) => ({
+      vendorName: form.vendor.trim(),
+      neededByDate: form.neededByDate || null,
+      currency: form.currency || 'IDR',
+      paymentTerms: form.paymentTerms || '',
+      notes: form.notes || '',
+      lines: selectedLines.map((line) => ({
         prLineId: line.prLineId,
         itemCode: line.itemCode,
         itemName: line.itemName,
